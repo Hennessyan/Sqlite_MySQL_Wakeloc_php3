@@ -44,7 +44,13 @@ import java.util.concurrent.CountDownLatch;
 
 import static android.app.job.JobInfo.getMinPeriodMillis;
 import static com.llu17.youngq.sqlite_gps.Util.session;
+import static com.llu17.youngq.sqlite_gps.VariableManager.acces;
+import static com.llu17.youngq.sqlite_gps.VariableManager.batteries;
 import static com.llu17.youngq.sqlite_gps.VariableManager.gpses;
+import static com.llu17.youngq.sqlite_gps.VariableManager.gyros;
+import static com.llu17.youngq.sqlite_gps.VariableManager.motions;
+import static com.llu17.youngq.sqlite_gps.VariableManager.steps;
+import static com.llu17.youngq.sqlite_gps.VariableManager.wifis;
 
 
 /**
@@ -60,22 +66,22 @@ public class UploadService extends Service implements VariableManager.Listener{
 
     public static  GpsDbHelper dbHelper1;
 
-    private String gps_url = "http://cs.binghamton.edu/~smartpark/android/gps.php";
-    private String acce_url = "http://cs.binghamton.edu/~smartpark/android/accelerometer.php";
-    private String gyro_url = "http://cs.binghamton.edu/~smartpark/android/gyroscope.php";
-    private String step_url = "http://cs.binghamton.edu/~smartpark/android/step.php";
-    private String motion_url = "http://cs.binghamton.edu/~smartpark/android/motionstate.php";
-    private String wifi_url = "http://cs.binghamton.edu/~smartpark/android/wifi.php";
-    private String battery_url = "http://cs.binghamton.edu/~smartpark/android/battery.php";
+//    private String gps_url = "http://cs.binghamton.edu/~smartpark/android/gps.php";
+//    private String acce_url = "http://cs.binghamton.edu/~smartpark/android/accelerometer.php";
+//    private String gyro_url = "http://cs.binghamton.edu/~smartpark/android/gyroscope.php";
+//    private String step_url = "http://cs.binghamton.edu/~smartpark/android/step.php";
+//    private String motion_url = "http://cs.binghamton.edu/~smartpark/android/motionstate.php";
+//    private String wifi_url = "http://cs.binghamton.edu/~smartpark/android/wifi.php";
+//    private String battery_url = "http://cs.binghamton.edu/~smartpark/android/battery.php";
 
     int count = 0;  //used to calculate num of star (num of tables finished upload)
 //    ArrayList<GPS> gpses;
-    ArrayList<ACCELEROMETER> acces;
-    ArrayList<GYROSCOPE> gyros;
-    ArrayList<MOTIONSTATE> motions;
-    ArrayList<STEP> steps;
-    ArrayList<BATTERY> batteries;
-    ArrayList<WIFI> wifis;
+//    ArrayList<ACCELEROMETER> acces;
+//    ArrayList<GYROSCOPE> gyros;
+//    ArrayList<MOTIONSTATE> motions;
+//    ArrayList<STEP> steps;
+//    ArrayList<BATTERY> batteries;
+//    ArrayList<WIFI> wifis;
 
     private JSONObject acce_object,gyro_object,gps_object,motion_object,step_object,battery_object,wifi_object;
     private JSONArray AcceJsonArray,GyroJsonArray,GpsJsonArray,MotionJsonArray,StepJsonArray,BatteryJsonArray,WiFiJsonArray;
@@ -108,7 +114,7 @@ public class UploadService extends Service implements VariableManager.Listener{
         mListener.unregisterListener(this);
         Log.e("service","destroy");
     }
-
+/*
     private ArrayList<GPS> find_all_gps(){
         dbHelper = new GpsDbHelper(this);
         db = dbHelper.getReadableDatabase();
@@ -484,7 +490,7 @@ public class UploadService extends Service implements VariableManager.Listener{
         }
         return StatusCode;
     }
-
+*/
     //获取电源锁，保持该服务在屏幕熄灭时仍然获取CPU时，保持运行
     private void acquireWakeLock()
     {
@@ -525,22 +531,6 @@ public class UploadService extends Service implements VariableManager.Listener{
                 mListener.doYourWork();
             }
 
-//                    int sum = 0;
-//                    for(int i : result)
-//                        sum += i;
-//                    if (sum == 200 ) {         //7*200 = 1400
-//
-//
-//                    }
-//                    result[0] = 0;
-//
-//                    if(gpses == null){
-//                        label = false;
-//                    }
-//                }
-//                Log.e("lalala","~~~~~~~");
-//
-//            }
             if(!currentNetworkInfo.isConnected()){
                 wifistate[0] = 0;
                 Log.e("WiFi is not Connected","!!!!!"+wifistate[0]);
@@ -549,19 +539,207 @@ public class UploadService extends Service implements VariableManager.Listener{
     };
 
     @Override
-    public void onStateChange(boolean state) {
-        if (state) {
-            Log.e("hahahahahahahahahahahha","1111111111");
+    public void onStateChange(boolean[] state) {
+        if (state[0]) {
             latch = new CountDownLatch(1);
             Thread t1 = new Thread() {
                 public void run() {
-                    long first_gps = gpses.get(0).getTimestamp();
-                    long last_gps = gpses.get(gpses.size() - 1).getTimestamp();
-
                     db1 = dbHelper.getWritableDatabase();
                     try {
                         if (db1 != null) {
-                            db1.execSQL("update gps_location set Tag = 1 where timestamp between ? and ?", new Object[]{first_gps, last_gps});
+                            db1.execSQL("update gps_location set Tag = 1 where timestamp between ? and ?", new Object[]{gpses.get(0).getTimestamp(), gpses.get(gpses.size() - 1).getTimestamp()});
+                        } else {
+                            Log.e("db1~~~~~~", "null");
+                        }
+                    }
+                    catch(Exception e){
+                        Log.e("here~~~~~~~~~~~~~~", "stop upload");
+                        Log.e("exception: ", e.getMessage());
+                    }
+                    finally {
+                        db1.close();
+                    }
+                    latch.countDown();
+                }
+            };
+            t1.start();
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            Log.e("lalala", "********");
+        } else {
+            Log.e("hahahahahahahahahahahha","2222222222");
+        }
+        if (state[1]) {
+            latch = new CountDownLatch(1);
+            Thread t1 = new Thread() {
+                public void run() {
+                    db1 = dbHelper.getWritableDatabase();
+                    try {
+                        if (db1 != null) {
+                            db1.execSQL("update accelerometer set Tag = 1 where timestamp between ? and ?", new Object[]{acces.get(0).getTimestamp(), acces.get(acces.size() - 1).getTimestamp()});
+                        } else {
+                            Log.e("db1~~~~~~", "null");
+                        }
+                    }
+                    catch(Exception e){
+                        Log.e("here~~~~~~~~~~~~~~", "stop upload");
+                        Log.e("exception: ", e.getMessage());
+                    }
+                    finally {
+                        db1.close();
+                    }
+                    latch.countDown();
+                }
+            };
+            t1.start();
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            Log.e("lalala", "********");
+        } else {
+            Log.e("hahahahahahahahahahahha","2222222222");
+        }
+        if (state[2]) {
+            latch = new CountDownLatch(1);
+            Thread t1 = new Thread() {
+                public void run() {
+                    db1 = dbHelper.getWritableDatabase();
+                    try {
+                        if (db1 != null) {
+                            db1.execSQL("update gyroscope set Tag = 1 where timestamp between ? and ?", new Object[]{gyros.get(0).getTimestamp(), gyros.get(gyros.size() - 1).getTimestamp()});
+                        } else {
+                            Log.e("db1~~~~~~", "null");
+                        }
+                    }
+                    catch(Exception e){
+                        Log.e("here~~~~~~~~~~~~~~", "stop upload");
+                        Log.e("exception: ", e.getMessage());
+                    }
+                    finally {
+                        db1.close();
+                    }
+                    latch.countDown();
+                }
+            };
+            t1.start();
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            Log.e("lalala", "********");
+        } else {
+            Log.e("hahahahahahahahahahahha","2222222222");
+        }
+        if (state[3]) {
+            latch = new CountDownLatch(1);
+            Thread t1 = new Thread() {
+                public void run() {
+                    db1 = dbHelper.getWritableDatabase();
+                    try {
+                        if (db1 != null) {
+                            db1.execSQL("update step set Tag = 1 where timestamp between ? and ?", new Object[]{steps.get(0).getTimestamp(), steps.get(steps.size() - 1).getTimestamp()});
+                        } else {
+                            Log.e("db1~~~~~~", "null");
+                        }
+                    }
+                    catch(Exception e){
+                        Log.e("here~~~~~~~~~~~~~~", "stop upload");
+                        Log.e("exception: ", e.getMessage());
+                    }
+                    finally {
+                        db1.close();
+                    }
+                    latch.countDown();
+                }
+            };
+            t1.start();
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            Log.e("lalala", "********");
+        } else {
+            Log.e("hahahahahahahahahahahha","2222222222");
+        }
+        if (state[4]) {
+            latch = new CountDownLatch(1);
+            Thread t1 = new Thread() {
+                public void run() {
+                    db1 = dbHelper.getWritableDatabase();
+                    try {
+                        if (db1 != null) {
+                            db1.execSQL("update motionstate set Tag = 1 where timestamp between ? and ?", new Object[]{motions.get(0).getTimestamp(), motions.get(motions.size() - 1).getTimestamp()});
+                        } else {
+                            Log.e("db1~~~~~~", "null");
+                        }
+                    }
+                    catch(Exception e){
+                        Log.e("here~~~~~~~~~~~~~~", "stop upload");
+                        Log.e("exception: ", e.getMessage());
+                    }
+                    finally {
+                        db1.close();
+                    }
+                    latch.countDown();
+                }
+            };
+            t1.start();
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            Log.e("lalala", "********");
+        } else {
+            Log.e("hahahahahahahahahahahha","2222222222");
+        }
+        if (state[5]) {
+            latch = new CountDownLatch(1);
+            Thread t1 = new Thread() {
+                public void run() {
+                    db1 = dbHelper.getWritableDatabase();
+                    try {
+                        if (db1 != null) {
+                            db1.execSQL("update wifi set Tag = 1 where timestamp between ? and ?", new Object[]{wifis.get(0).getTimestamp(), wifis.get(wifis.size() - 1).getTimestamp()});
+                        } else {
+                            Log.e("db1~~~~~~", "null");
+                        }
+                    }
+                    catch(Exception e){
+                        Log.e("here~~~~~~~~~~~~~~", "stop upload");
+                        Log.e("exception: ", e.getMessage());
+                    }
+                    finally {
+                        db1.close();
+                    }
+                    latch.countDown();
+                }
+            };
+            t1.start();
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            Log.e("lalala", "********");
+        } else {
+            Log.e("hahahahahahahahahahahha","2222222222");
+        }
+        if (state[6]) {
+            latch = new CountDownLatch(1);
+            Thread t1 = new Thread() {
+                public void run() {
+                    db1 = dbHelper.getWritableDatabase();
+                    try {
+                        if (db1 != null) {
+                            db1.execSQL("update battery set Tag = 1 where timestamp between ? and ?", new Object[]{batteries.get(0).getTimestamp(), batteries.get(batteries.size() - 1).getTimestamp()});
                         } else {
                             Log.e("db1~~~~~~", "null");
                         }
